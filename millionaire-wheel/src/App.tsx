@@ -23,8 +23,8 @@ const COLORS = [
 export default function App() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState(null);
-  const [landedIndex, setLandedIndex] = useState(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [landedIndex, setLandedIndex] = useState<number | null>(null);
   const [showRealGifts, setShowRealGifts] = useState(false);
 
   // Dynamic array storing actual slice contents
@@ -101,10 +101,6 @@ export default function App() {
             const pathData = `M 250 250 L ${x1} ${y1} A 240 240 0 0 1 ${x2} ${y2} Z`;
             const textAngle = startAngle + angle / 2;
 
-            // DISPLAY LOGIC:
-            // 1. If admin reveals all: show all prize text ("Cái nịt" at landed index, real prizes elsewhere)
-            // 2. If wheel finished spinning and this is the landed index: reveal "Cái nịt" immediately on wheel
-            // 3. Otherwise: show "?"
             let displayText = "?";
             if (showRealGifts) {
               displayText = prizeText;
@@ -144,7 +140,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Reveal Button (Disabled while spinning or before first spin) */}
+      {/* Reveal Button */}
       <div className="reveal-panel">
         <button 
           className="reveal-btn" 
