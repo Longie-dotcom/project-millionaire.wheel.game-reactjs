@@ -4,15 +4,8 @@ import Banner from './assets/rich-happy.gif';
 import Laughter_1 from './assets/c5f285177a8615d53bd45bcb4ee3a154.jpg';
 import Laughter_2 from './assets/e7b756706240d1021141d0aa9538e230.jpg';
 
-// Base reward options for all segments
-const BASE_PRIZES = [
-  "1 triệu đồng",
-  "2 triệu đồng",
-  "500k",
-  "5 triệu đồng",
-  "3 triệu đồng",
-  "10 triệu đồng"
-];
+// "Cái nịt" is now part of the base prizes array
+const BASE_PRIZES = ["10k", "20k", "50k", "Cái nịt", "100k", "200k"];
 
 const COLORS = [
   "#ffffff",
@@ -27,52 +20,59 @@ export default function App() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<string | null>(null);
-  const [landedIndex, setLandedIndex] = useState<number | null>(null);
   const [showRealGifts, setShowRealGifts] = useState(false);
-
-  // Dynamic array storing actual slice contents
-  const [wheelPrizes, setWheelPrizes] = useState(BASE_PRIZES);
+  const [transitionStyle, setTransitionStyle] = useState("none");
 
   const spinWheel = () => {
     if (spinning) return;
 
     setSpinning(true);
     setResult(null);
-    setLandedIndex(null);
-    setShowRealGifts(false); // Reset to mystery "?" state during spin
+    setShowRealGifts(false);
 
     const numSlices = BASE_PRIZES.length;
     const sliceAngle = 360 / numSlices;
 
-    // 1. Pick a random slice index
-    const randomIndex = Math.floor(Math.random() * numSlices);
+    // 1. Pick a completely random initial landing index
+    const firstLandingIndex = Math.floor(Math.random() * numSlices);
+    const sliceCenterOffset = sliceAngle / 2;
+    const firstAngleFromTop = 360 - (firstLandingIndex * sliceAngle + sliceCenterOffset);
 
-    // 2. Pick a random offset INSIDE that slice so it stops naturally without snapping
-    const randomOffsetInsideSlice = Math.random() * (sliceAngle - 4) + 2; 
-    const targetSliceStartAngle = randomIndex * sliceAngle;
-    const exactStopAngleFromTop = targetSliceStartAngle + randomOffsetInsideSlice;
-    const targetAngleFromTop = 360 - exactStopAngleFromTop;
+    const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360;
+    const currentBaseRotation = Math.floor(rotation / 360) * 360;
+    const firstTargetRotation = currentBaseRotation + extraSpins + firstAngleFromTop;
 
-    // 3. Add multiple full spins (5 to 8 full rotations)
-    const extraSpins = (5 + Math.floor(Math.random() * 4)) * 360;
-    const currentRotations = Math.floor(rotation / 360) * 360;
-    const nextRotation = currentRotations + extraSpins + targetAngleFromTop;
+    // --- PHASE 1: Normal Initial Spin ---
+    setTransitionStyle("transform 6s cubic-bezier(0.15, 0.99, 0.35, 1)");
+    setRotation(firstTargetRotation);
 
-    setRotation(nextRotation);
-
-    // Match this timeout to your 8s CSS transition time (8000 ms)
+    // --- PHASE 2: Auto-correct/glide to "Cái nịt" after initial stop ---
     setTimeout(() => {
-      setSpinning(false);
-      setLandedIndex(randomIndex);
-      setResult("Cái nịt");
+      // Find the exact index of "Cái nịt" in BASE_PRIZES
+      const caiNitIndex = BASE_PRIZES.indexOf("Cái nịt");
+      const caiNitAngleFromTop = 360 - (caiNitIndex * sliceAngle + sliceCenterOffset);
 
-      // TROLL MECHANIC: Set ONLY the landed segment to "Cái nịt"
-      setWheelPrizes(() => {
-        const updatedPrizes = [...BASE_PRIZES];
-        updatedPrizes[randomIndex] = "Cái nịt";
-        return updatedPrizes;
-      });
-    }, 8000);
+      // Calculate the shortest rotational path (clockwise vs counter-clockwise)
+      const currentModRotation = firstTargetRotation % 360;
+      let angleDifference = caiNitAngleFromTop - currentModRotation;
+
+      // Normalize angle difference to be between -180 and 180 degrees for shortest turn
+      while (angleDifference > 180) angleDifference -= 360;
+      while (angleDifference < -180) angleDifference += 360;
+
+      const finalRotation = firstTargetRotation + angleDifference;
+
+      // Smooth transition for the correction glide
+      setTransitionStyle("transform 1.8s cubic-bezier(0.25, 1, 0.5, 1)");
+      setRotation(finalRotation);
+
+      // Finalize outcome after correction animation finishes
+      setTimeout(() => {
+        setSpinning(false);
+        setResult("Cái nịt");
+      }, 1800);
+
+    }, 6000);
   };
 
   const toggleShowGifts = () => {
@@ -82,12 +82,10 @@ export default function App() {
 
   return (
     <div className="wheel-container">
-      <h1 className='title'>Bạn có phải là Tư Sản?</h1>
-      <h2 className='subtitle'>(Hay là Vô Sản)</h2>
+      <h1 className="title">Bạn có phải là Tư Sản?</h1>
+      <h2 className="subtitle">(Hay là Vô Sản)</h2>
 
-      {/* Main content layout */}
       <div className="main-content">
-        {/* Left Side: Show Laughter when result exists, otherwise show Banner */}
         {result ? (
           <img src={Laughter_1} alt="Laughter Left" className="outer-laughter spinning-forever" />
         ) : (
@@ -95,20 +93,18 @@ export default function App() {
         )}
 
         <div className="wheel-wrapper">
-          {/* Top Pointer */}
           <div className="pointer" />
 
-          {/* SVG Wheel */}
           <svg
             className="wheel-svg"
             viewBox="0 0 500 500"
             style={{
               transform: `rotate(${rotation}deg)`,
-              transition: spinning ? "transform 8s cubic-bezier(0.15, 0.99, 0.35, 1)" : "none"
+              transition: transitionStyle
             }}
           >
-            {wheelPrizes.map((prizeText, index) => {
-              const angle = 360 / wheelPrizes.length;
+            {BASE_PRIZES.map((prizeText, index) => {
+              const angle = 360 / BASE_PRIZES.length;
               const startAngle = index * angle;
               const endAngle = (index + 1) * angle;
 
@@ -120,11 +116,10 @@ export default function App() {
               const pathData = `M 250 250 L ${x1} ${y1} A 240 240 0 0 1 ${x2} ${y2} Z`;
               const textAngle = startAngle + angle / 2;
 
-              let displayText = "?";
-              if (showRealGifts) {
-                displayText = prizeText;
-              } else if (index === landedIndex) {
-                displayText = "Cái nịt";
+              let displayText = prizeText;
+              // If gifts are hidden and user hasn't toggled reveal yet, mask non-Cái nịt prizes with "?"
+              if (!showRealGifts && prizeText !== "Cái nịt" && result) {
+                displayText = "?";
               }
 
               return (
@@ -146,13 +141,11 @@ export default function App() {
             })}
           </svg>
 
-          {/* Spin Center Button */}
           <button className="spin-center-btn" onClick={spinWheel} disabled={spinning}>
             {spinning ? "..." : "QUAY"}
           </button>
         </div>
 
-        {/* Right Side: Show Laughter when result exists, otherwise show Banner */}
         {result ? (
           <img src={Laughter_2} alt="Laughter Right" className="outer-laughter spinning-forever" />
         ) : (
@@ -160,18 +153,16 @@ export default function App() {
         )}
       </div>
 
-      {/* Result Display */}
       {result && (
         <div className="result-card">
           Kết quả: <span className="troll-result">{result}</span> !
         </div>
       )}
 
-      {/* Reveal Button */}
       <div className="reveal-panel">
-        <button 
-          className="reveal-btn" 
-          onClick={toggleShowGifts} 
+        <button
+          className="reveal-btn"
+          onClick={toggleShowGifts}
           disabled={spinning || !result}
           style={{ opacity: spinning || !result ? 0.5 : 1, cursor: spinning || !result ? 'not-allowed' : 'pointer' }}
         >
